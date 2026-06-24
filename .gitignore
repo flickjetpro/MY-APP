@@ -38,7 +38,8 @@ npm-debug.log*
 temp/
 tmp/
 
-# IPTV master repo (separate download)
+# IPTV master repo (local clone, not part of our repo)
 iptv-master/
+
 
 

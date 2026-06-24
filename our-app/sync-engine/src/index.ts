@@ -1,5 +1,6 @@
 import {
   loadJsonData,
+  fetchStreamsFromApi,
   parseAllM3uFiles,
   getChannelLogo
 } from './iptv-parser.js'
@@ -11,7 +12,8 @@ import {
   upsertCategories,
   upsertCountries,
   upsertLanguages,
-  clearStreams
+  clearStreams,
+  deleteOrphanedChannels
 } from './supabase-client.js'
 
 import type {
@@ -21,12 +23,13 @@ import type {
   SyncResult
 } from './types.js'
 
-const IPTV_MASTER_PATH = process.env.IPTV_MASTER_PATH || '../../iptv-master'
+import { existsSync } from 'node:fs'
+
 const DATA_DIR = process.env.DATA_DIR || './data'
+const IPTV_MASTER_PATH = process.env.IPTV_MASTER_PATH || ''
 
 async function main() {
   console.log('=== TV App Sync Engine ===')
-  console.log(`IPTV master path: ${IPTV_MASTER_PATH}`)
   console.log(`Data directory: ${DATA_DIR}`)
   console.log('')
 
@@ -54,11 +57,31 @@ async function main() {
     logo_url: getChannelLogo(ch.id, logos)
   }))
 
-  // 3. Parse M3U files for stream URLs
-  console.log('Parsing M3U stream files...')
-  const streamsDir = `${IPTV_MASTER_PATH}/streams`
-  const streams = parseAllM3uFiles({ streamsDir, dataDir: DATA_DIR })
-  console.log(`  Parsed ${streams.length} stream entries`)
+  // 3. Fetch stream URLs
+  console.log('Fetching stream URLs...')
+  let streams: Awaited<ReturnType<typeof fetchStreamsFromApi>> = []
+  let dataSource = ''
+
+  // Primary: fetch from IPTV org API
+  try {
+    streams = await fetchStreamsFromApi()
+    dataSource = 'iptv-org-api'
+    console.log(`  Got ${streams.length} streams from API`)
+  } catch (apiErr) {
+    console.warn(`  API fetch failed: ${apiErr}`)
+
+    // Fallback: parse local M3U files
+    const streamsDir = IPTV_MASTER_PATH ? `${IPTV_MASTER_PATH}/streams` : '../../iptv-master/streams'
+    if (existsSync(streamsDir)) {
+      console.log('  Falling back to local M3U parsing...')
+      streams = parseAllM3uFiles({ streamsDir, dataDir: DATA_DIR })
+      dataSource = 'local-m3u'
+      console.log(`  Got ${streams.length} streams from local M3U files`)
+    } else {
+      console.warn('  No local M3U files found either. Skipping streams.')
+      dataSource = 'none'
+    }
+  }
 
   // 4. Upload to Supabase
   console.log('')
@@ -78,7 +101,9 @@ async function main() {
       categories_upserted: categories.length,
       countries_upserted: countries.length,
       total_streams: streams.length,
-      total_channels: enrichedChannels.length
+      total_channels: enrichedChannels.length,
+      orphaned_channels_deleted: 0,
+      data_source: dataSource
     }
     console.log('')
     console.log('=== Sync Result (TEST) ===')
@@ -93,7 +118,9 @@ async function main() {
     categories_upserted: 0,
     countries_upserted: 0,
     total_streams: streams.length,
-    total_channels: enrichedChannels.length
+    total_channels: enrichedChannels.length,
+    orphaned_channels_deleted: 0,
+    data_source: dataSource
   }
 
   const startTime = Date.now()
@@ -124,11 +151,20 @@ async function main() {
   result.feeds_upserted = await upsertFeeds(feeds)
   console.log(`  Feeds upserted: ${result.feeds_upserted}`)
 
-  // Clear old streams then upsert new ones
-  console.log('  Clearing old streams...')
-  await clearStreams()
-  result.streams_upserted = await upsertStreams(streams)
-  console.log(`  Streams upserted: ${result.streams_upserted}`)
+  // Clear old streams then upsert fresh ones
+  if (streams.length > 0) {
+    console.log('  Clearing old streams...')
+    await clearStreams()
+    result.streams_upserted = await upsertStreams(streams)
+    console.log(`  Streams upserted: ${result.streams_upserted}`)
+  } else {
+    console.log('  No streams to upsert, skipping stream update')
+  }
+
+  // Cleanup: delete channels that have no streams
+  console.log('  Checking for orphaned channels...')
+  result.orphaned_channels_deleted = await deleteOrphanedChannels()
+  console.log(`  Orphaned channels deleted: ${result.orphaned_channels_deleted}`)
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1)
   console.log('')

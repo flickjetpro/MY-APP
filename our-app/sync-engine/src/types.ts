@@ -64,4 +64,6 @@ export interface SyncResult {
   countries_upserted: number
   total_streams: number
   total_channels: number
+  orphaned_channels_deleted: number
+  data_source: string
 }

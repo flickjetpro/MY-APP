@@ -150,3 +150,34 @@ export async function clearStreams(): Promise<void> {
     console.error('Error clearing streams:', error)
   }
 }
+
+export async function deleteOrphanedChannels(): Promise<number> {
+  const { data: orphaned, error: selectError } = await supabase
+    .from('channels')
+    .select('id')
+    .not('id', 'in', supabase.from('streams').select('channel_id').not('channel_id', 'is', null))
+
+  if (selectError) {
+    console.warn('Could not query orphaned channels:', selectError.message)
+    return 0
+  }
+
+  if (!orphaned || orphaned.length === 0) {
+    console.log('  No orphaned channels found')
+    return 0
+  }
+
+  const ids = orphaned.map(c => c.id)
+  const { error: deleteError } = await supabase
+    .from('channels')
+    .delete()
+    .in('id', ids)
+
+  if (deleteError) {
+    console.warn('Error deleting orphaned channels:', deleteError.message)
+    return 0
+  }
+
+  console.log(`  Deleted ${ids.length} orphaned channels`)
+  return ids.length
+}

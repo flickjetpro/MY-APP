@@ -12,10 +12,33 @@ export interface ParserConfig {
   dataDir: string
 }
 
+const IPTV_API_STREAMS = 'https://iptv-org.github.io/api/streams.json'
+
 export function loadJsonData<T>(filePath: string): T[] {
   const fullPath = path.resolve(filePath)
   const raw = fs.readFileSync(fullPath, 'utf-8')
   return JSON.parse(raw) as T[]
+}
+
+export async function fetchStreamsFromApi(): Promise<StreamRecord[]> {
+  console.log('  Fetching from IPTV API...')
+  const res = await fetch(IPTV_API_STREAMS)
+  if (!res.ok) {
+    throw new Error(`IPTV API returned ${res.status}: ${res.statusText}`)
+  }
+  const raw: any[] = await res.json()
+  console.log(`  Fetched ${raw.length} raw stream entries`)
+
+  return raw.map(item => ({
+    channel_id: item.channel || null,
+    feed_id: item.feed || null,
+    title: item.title || '',
+    url: item.url || '',
+    quality: item.quality || null,
+    label: item.label || null,
+    user_agent: item.user_agent || null,
+    referrer: item.referrer || null
+  }))
 }
 
 export function parseAllM3uFiles(config: ParserConfig): StreamRecord[] {
