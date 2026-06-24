@@ -83,47 +83,53 @@ When the user requests a durable behavior change, record it here or in the relev
 
 ## Child DOX Index
 
-### `our-app/` — TV Application (New Project)
-- **Purpose**: Multi-sports TV streaming application with custom media player, ad system, embed support, and auto-syncing data pipeline from IPTV org.
+### `our-app/` — TV Application (Data pipeline only)
+- **Purpose**: Database schema, sync engine, data files, and configs.
 - **Ownership**: This subtree.
 
 | Path | Scope |
 |------|-------|
 | `our-app/supabase-schema.sql` | Database schema for Supabase (channels, streams, feeds, categories, countries, languages, ads, embeds) |
-| `our-app/sync-engine/` | Data pipeline: parses IPTV M3U files + channel metadata JSON into Supabase via upsert |
-| `our-app/sync-engine/src/index.ts` | Main sync entry: parse M3U → transform → upsert to Supabase |
-| `our-app/sync-engine/src/iptv-parser.ts` | M3U file parser (reuses iptv-playlist-parser) + channel metadata loader |
-| `our-app/sync-engine/src/supabase-client.ts` | Supabase upsert functions for all tables |
+| `our-app/sync-engine/` | Data pipeline: parses IPTV API + local M3U files into Supabase via upsert |
+| `our-app/sync-engine/src/index.ts` | Main sync entry: fetch API → transform → upsert to Supabase |
+| `our-app/sync-engine/src/iptv-parser.ts` | IPTV API fetcher + M3U file parser + channel metadata loader |
+| `our-app/sync-engine/src/supabase-client.ts` | Supabase upsert functions for all tables, orphan cleanup |
 | `our-app/sync-engine/src/types.ts` | TypeScript interfaces for all data types |
 | `our-app/sync-engine/data/` | Local copies of channel metadata (channels.json, categories.json, countries.json, feeds.json, languages.json, logos.json, regions.json) |
-| `our-app/sync-engine/api/trigger.ts` | Vercel serverless function to trigger sync on demand (cron endpoint) |
-| `our-app/api/` | REST API (Vercel serverless functions) |
-| `our-app/api/src/handlers/channels.ts` | GET /api/channels — list channels with filters |
-| `our-app/api/src/handlers/channels-[id].ts` | GET /api/channels/:id — channel detail with streams |
-| `our-app/api/src/handlers/streams.ts` | GET /api/streams — list streams with filters |
-| `our-app/api/src/handlers/categories.ts` | GET /api/categories |
-| `our-app/api/src/handlers/countries.ts` | GET /api/countries |
-| `our-app/api/src/handlers/languages.ts` | GET /api/languages |
-| `our-app/api/src/handlers/embed-[code].ts` | GET /api/embed/:code — resolve short code to stream |
-| `our-app/api/src/handlers/embed-generate.ts` | POST /api/embed/generate — create short embed link |
-| `our-app/api/src/handlers/sync-trigger.ts` | POST /api/sync/trigger — manual sync trigger |
-| `our-app/frontend/` | Next.js TV App |
-| `our-app/frontend/src/pages/index.tsx` | Home — channel grid with filters |
-| `our-app/frontend/src/pages/watch/[id].tsx` | Watch page with MediaPlayer |
-| `our-app/frontend/src/pages/embed/[code].tsx` | Minimal embed page for iframe |
-| `our-app/frontend/src/pages/category/[slug].tsx` | Channels filtered by category |
-| `our-app/frontend/src/pages/country/[code].tsx` | Channels filtered by country |
-| `our-app/frontend/src/components/media/MediaPlayer.tsx` | Core player: HLS.js + Ad flow + controls |
-| `our-app/frontend/src/components/media/AdOverlay.tsx` | Pre-roll ad with 5s countdown + skip button |
-| `our-app/frontend/src/components/media/PlayerControls.tsx` | Play/pause, volume, fullscreen, quality selector |
-| `our-app/frontend/src/components/media/StreamError.tsx` | Error state component |
-| `our-app/frontend/src/components/embed/EmbedPlayer.tsx` | Lightweight embed player (no chrome) |
-| `our-app/frontend/src/lib/api-client.ts` | Frontend API client functions |
-| `our-app/frontend/src/lib/hls-config.ts` | HLS.js configuration presets |
-| `our-app/cron-setup.md` | Guide for setting up cron-jobs.org |
 | `our-app/.env.example` | Environment variable template |
-| `project-structure.md` | Full architecture documentation |
-| `implementation-plan.md` | Phased implementation roadmap |
+
+### Root — Next.js TV App (Vercel entry point)
+- **Purpose**: Frontend web app + API serverless endpoints, deployed on Vercel.
+- **Ownership**: Repo root.
+
+| Path | Scope |
+|------|-------|
+| `package.json` | Next.js app entry point (Vercel auto-detects) |
+| `vercel.json` | Vercel config (Next.js framework, build command) |
+| `next.config.js` | Next.js config (React strict mode, remote images) |
+| `src/pages/index.tsx` | Home — channel grid with filters |
+| `src/pages/watch/[id].tsx` | Watch page with MediaPlayer |
+| `src/pages/embed/[code].tsx` | Minimal embed page for iframe |
+| `src/pages/category/[slug].tsx` | Channels filtered by category |
+| `src/pages/country/[code].tsx` | Channels filtered by country |
+| `src/pages/api/channels/index.ts` | GET /api/channels — list channels with filters |
+| `src/pages/api/channels/[id].ts` | GET /api/channels/:id — channel detail with streams |
+| `src/pages/api/streams/index.ts` | GET /api/streams — list streams with filters |
+| `src/pages/api/categories/index.ts` | GET /api/categories |
+| `src/pages/api/countries/index.ts` | GET /api/countries |
+| `src/pages/api/languages/index.ts` | GET /api/languages |
+| `src/pages/api/embed/[code].ts` | GET /api/embed/:code — resolve short code to stream |
+| `src/pages/api/embed/generate.ts` | POST /api/embed/generate — create short embed link |
+| `src/pages/api/sync/trigger.ts` | POST /api/sync/trigger — manual sync trigger (delegates to GitHub Actions) |
+| `src/components/media/MediaPlayer.tsx` | Core player: HLS.js + Ad flow + controls |
+| `src/components/media/AdOverlay.tsx` | Pre-roll ad with 5s countdown + skip button |
+| `src/components/media/PlayerControls.tsx` | Play/pause, volume, fullscreen, quality selector |
+| `src/components/media/StreamError.tsx` | Error state component |
+| `src/components/embed/EmbedPlayer.tsx` | Lightweight embed player (no chrome) |
+| `src/lib/api-client.ts` | Frontend API client functions |
+| `src/lib/api/supabase.ts` | Supabase client helper (API routes) |
+| `src/lib/api/short-code.ts` | Base62 short code generator |
+| `src/lib/hls-config.ts` | HLS.js configuration presets |
 
 ### `iptv-master/` — IPTV Org Repository (Source Only)
 - **Purpose**: Source of M3U streaming links and channel metadata. Periodically updated via git pull. Not modified by this project.
