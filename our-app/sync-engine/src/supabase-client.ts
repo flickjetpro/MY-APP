@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import WebSocket from 'ws'
 import type { ChannelData, FeedData, StreamRecord } from './types'
 
 const supabaseUrl = process.env.SUPABASE_URL || ''
@@ -8,7 +9,10 @@ if (!supabaseUrl || !supabaseKey) {
   throw new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY environment variables are required')
 }
 
-const supabase = createClient(supabaseUrl, supabaseKey)
+// Node.js < 22 lacks native WebSocket — 'ws' provides it for Supabase realtime
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  realtime: { transport: WebSocket }
+})
 
 export async function upsertChannels(channels: ChannelData[]): Promise<number> {
   const batchSize = 500
