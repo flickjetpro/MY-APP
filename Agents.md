@@ -90,9 +90,9 @@ When the user requests a durable behavior change, record it here or in the relev
 | Path | Scope |
 |------|-------|
 | `our-app/supabase-schema.sql` | Database schema for Supabase (channels, streams, feeds, categories, countries, languages, ads, embeds) |
-| `our-app/sync-engine/` | Data pipeline: parses IPTV API + local M3U files into Supabase via upsert |
-| `our-app/sync-engine/src/index.ts` | Main sync entry: fetch API → transform → upsert to Supabase |
-| `our-app/sync-engine/src/iptv-parser.ts` | IPTV API fetcher + M3U file parser + channel metadata loader |
+| `our-app/sync-engine/` | Data pipeline: parses M3U files from iptv-org/iptv + API metadata into Supabase |
+| `our-app/sync-engine/src/index.ts` | Main sync entry: parse M3U → enrich metadata → upsert to Supabase |
+| `our-app/sync-engine/src/iptv-parser.ts` | M3U file parser + API metadata downloader + channel metadata loader |
 | `our-app/sync-engine/src/supabase-client.ts` | Supabase upsert functions for all tables, orphan cleanup |
 | `our-app/sync-engine/src/types.ts` | TypeScript interfaces for all data types |
 | `our-app/sync-engine/data/` | Local copies of channel metadata (channels.json, categories.json, countries.json, feeds.json, languages.json, logos.json, regions.json) |
