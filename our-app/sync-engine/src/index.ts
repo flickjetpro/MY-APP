@@ -22,6 +22,7 @@ import type {
   ChannelData,
   FeedData,
   LogoData,
+  StreamRecord,
   SyncResult
 } from './types.js'
 
@@ -57,38 +58,55 @@ async function main() {
   console.log(`  Logos: ${logos.length}`)
   console.log('')
 
-  // 3. Enrich channels with logo URLs
+  // 3. Enrich channels with logo URLs and normalize country codes
   console.log('Enriching channel data...')
+  const countryMap: Record<string, string> = { UK: 'GB' }
   const enrichedChannels = channels.map(ch => ({
     ...ch,
+    country: countryMap[ch.country] || ch.country,
     logo_url: getChannelLogo(ch.id, logos)
   }))
 
-  // 4. Fetch stream URLs
+  // 4. Fetch stream URLs from both M3U files and API streams.json
   console.log('Fetching stream URLs...')
-  let streams: Awaited<ReturnType<typeof fetchStreamsFromApi>> = []
-  let dataSource = ''
+  const allStreams: StreamRecord[] = []
+  const sources: string[] = []
 
-  // Primary: parse M3U files from iptv-org/iptv repo (no external API dependency)
+  // Source 1: M3U files from iptv-org/iptv repo
   const streamsDir = IPTV_MASTER_PATH ? `${IPTV_MASTER_PATH}/streams` : '../../iptv-master/streams'
   if (existsSync(streamsDir)) {
-    console.log('  Parsing M3U files from iptv-org/iptv...')
-    streams = parseAllM3uFiles({ streamsDir, dataDir: DATA_DIR })
-    dataSource = 'local-m3u'
-    console.log(`  Got ${streams.length} streams from ${streamsDir}`)
+    const m3u = parseAllM3uFiles({ streamsDir, dataDir: DATA_DIR })
+    allStreams.push(...m3u)
+    sources.push(`m3u(${m3u.length})`)
+    console.log(`  Parsed ${m3u.length} streams from M3U files`)
   } else {
     console.warn(`  M3U streams directory not found: ${streamsDir}`)
+  }
 
-    // Fallback: try IPTV API
-    try {
-      streams = await fetchStreamsFromApi()
-      dataSource = 'iptv-org-api'
-      console.log(`  Got ${streams.length} streams from API`)
-    } catch (apiErr) {
-      console.warn(`  API stream fetch also failed: ${apiErr}`)
-      dataSource = 'none'
+  // Source 2: IPTV API streams.json (catches streams missing tvg-id in M3U)
+  try {
+    const api = await fetchStreamsFromApi()
+    allStreams.push(...api)
+    sources.push(`api(${api.length})`)
+    console.log(`  Fetched ${api.length} streams from API`)
+  } catch (apiErr) {
+    console.warn(`  API stream fetch failed: ${apiErr}`)
+  }
+
+  // Deduplicate by URL: prefer entry with channel_id populated
+  const urlMap = new Map<string, StreamRecord>()
+  for (const s of allStreams) {
+    const existing = urlMap.get(s.url)
+    if (!existing || (s.channel_id && !existing.channel_id)) {
+      urlMap.set(s.url, s)
     }
   }
+  const streams = [...urlMap.values()]
+  const deduped = allStreams.length - streams.length
+  let dataSource = sources.join('+') || 'none'
+
+  console.log(`  Combined: ${streams.length} unique streams (${deduped} duplicates removed)`)
+  console.log(`  Sources: [${sources.join(', ')}]`)
 
   // 5. Upload to Supabase
   console.log('')

@@ -3,6 +3,7 @@ export interface ChannelData {
   name: string
   alt_names?: string[]
   network: string | null
+  owners?: string[]
   country: string
   categories: string[]
   is_nsfw: boolean

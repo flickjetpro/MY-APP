@@ -90,11 +90,11 @@ When the user requests a durable behavior change, record it here or in the relev
 | Path | Scope |
 |------|-------|
 | `our-app/supabase-schema.sql` | Database schema for Supabase (channels, streams, feeds, categories, countries, languages, ads, embeds) |
-| `our-app/sync-engine/` | Data pipeline: parses M3U files from iptv-org/iptv + API metadata into Supabase |
-| `our-app/sync-engine/src/index.ts` | Main sync entry: parse M3U → enrich metadata → upsert to Supabase |
-| `our-app/sync-engine/src/iptv-parser.ts` | M3U file parser + API metadata downloader + channel metadata loader |
-| `our-app/sync-engine/src/supabase-client.ts` | Supabase upsert functions for all tables, orphan cleanup |
-| `our-app/sync-engine/src/types.ts` | TypeScript interfaces for all data types |
+| `our-app/sync-engine/` | Data pipeline: parses M3U + API streams from iptv-org into Supabase |
+| `our-app/sync-engine/src/index.ts` | Main sync entry: merge M3U + API streams → enrich metadata → upsert to Supabase |
+| `our-app/sync-engine/src/iptv-parser.ts` | M3U file parser + API metadata downloader + channel metadata loader + API streams fetcher |
+| `our-app/sync-engine/src/supabase-client.ts` | Supabase upsert functions for all tables, orphan cleanup (channels joined to streams) |
+| `our-app/sync-engine/src/types.ts` | TypeScript interfaces: ChannelData, FeedData, StreamRecord, SyncResult |
 | `our-app/sync-engine/data/` | Local copies of channel metadata (channels.json, categories.json, countries.json, feeds.json, languages.json, logos.json, regions.json) |
 | `our-app/.env.example` | Environment variable template |
 
