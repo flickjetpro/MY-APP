@@ -1,10 +1,10 @@
-import type { Config } from 'hls.js'
+import type { HlsConfig } from 'hls.js'
 
-export function createHlsConfig(userAgent?: string | null, referrer?: string | null): Partial<Config> {
+export function createHlsConfig(userAgent?: string | null, referrer?: string | null): Partial<HlsConfig> {
   return {
     enableWorker: true,
     lowLatencyMode: false,
-    backbufferLength: 30,
+    backBufferLength: 30,
     maxBufferLength: 30,
     maxMaxBufferLength: 60,
     startLevel: 1,

@@ -1,7 +1,7 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { supabase, sendJSON, sendError } from '../lib/supabase.js'
+import type { NextApiRequest, NextApiResponse } from 'next'
+import { supabase, sendJSON, sendError } from '../../../lib/api/supabase'
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'OPTIONS') {
     return sendJSON(res, {})
   }
@@ -17,7 +17,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendError(res, 'Invalid embed code', 400)
     }
 
-    // Lookup embed
     const { data: embed, error: embedError } = await supabase
       .from('embeds')
       .select('*')
@@ -28,12 +27,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendError(res, 'Embed not found', 404)
     }
 
-    // Check expiry
     if (embed.expires_at && new Date(embed.expires_at) < new Date()) {
       return sendError(res, 'Embed has expired', 410)
     }
 
-    // Get channel info
     const { data: channel } = await supabase
       .from('channels')
       .select('id, name, country_code, categories, logo_url')
@@ -44,7 +41,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendError(res, 'Channel not found', 404)
     }
 
-    // Get stream URL
     let streamQuery = supabase
       .from('streams')
       .select('id, title, url, quality, user_agent, referrer')
@@ -61,7 +57,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const stream = streams?.[0] || null
 
-    // Increment view count
     await supabase
       .from('embeds')
       .update({ views: (embed.views || 0) + 1 })

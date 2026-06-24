@@ -1,7 +1,7 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { supabase, sendJSON, sendError } from '../lib/supabase.js'
+import type { NextApiRequest, NextApiResponse } from 'next'
+import { supabase, sendJSON, sendError } from '../../../lib/api/supabase'
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'OPTIONS') {
     return sendJSON(res, {})
   }
@@ -27,7 +27,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return sendError(res, 'Channel not found', 404)
     }
 
-    // Fetch associated streams
     const { data: streams } = await supabase
       .from('streams')
       .select('id, feed_id, title, url, quality, label, user_agent, referrer, is_active')

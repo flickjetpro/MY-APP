@@ -1,7 +1,7 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { supabase, sendJSON, sendError, getPagination } from '../lib/supabase.js'
+import type { NextApiRequest, NextApiResponse } from 'next'
+import { supabase, sendJSON, sendError, getPagination } from '../../../lib/api/supabase'
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'OPTIONS') {
     return sendJSON(res, {})
   }
