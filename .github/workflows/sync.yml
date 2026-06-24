@@ -11,11 +11,19 @@ jobs:
   sync:
     name: Sync IPTV Streams to Supabase
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      # Clone iptv-org/iptv to get M3U files for stream URL extraction.
+      # This avoids depending on their hosted API.
+      - name: Checkout iptv-org/iptv
+        uses: actions/checkout@v4
+        with:
+          repository: iptv-org/iptv
+          path: iptv-master
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -35,3 +43,4 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           DATA_DIR: ./data
+          IPTV_MASTER_PATH: ../../iptv-master

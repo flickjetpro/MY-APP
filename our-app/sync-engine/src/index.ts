@@ -1,5 +1,7 @@
 import {
   loadJsonData,
+  loadJsonDataFromCacheOrLocal,
+  downloadApiData,
   fetchStreamsFromApi,
   parseAllM3uFiles,
   getChannelLogo
@@ -33,14 +35,19 @@ async function main() {
   console.log(`Data directory: ${DATA_DIR}`)
   console.log('')
 
-  // 1. Load local channel metadata
+  // 1. Download fresh channel metadata from API (best-effort, falls back to local copies)
+  console.log('Downloading fresh channel metadata...')
+  await downloadApiData(DATA_DIR)
+
+  // 2. Load channel metadata from cache (if API download succeeded) or local files
+  console.log('')
   console.log('Loading channel metadata...')
-  const channels = loadJsonData<ChannelData>(`${DATA_DIR}/channels.json`)
-  const feeds = loadJsonData<FeedData>(`${DATA_DIR}/feeds.json`)
-  const categories = loadJsonData<{ id: string; name: string }>(`${DATA_DIR}/categories.json`)
-  const countries = loadJsonData<{ code: string; name: string; flag?: string; lang?: string }>(`${DATA_DIR}/countries.json`)
-  const languages = loadJsonData<{ code: string; name: string }>(`${DATA_DIR}/languages.json`)
-  const logos = loadJsonData<LogoData>(`${DATA_DIR}/logos.json`)
+  const channels = loadJsonDataFromCacheOrLocal<ChannelData>('channels.json', DATA_DIR)
+  const feeds = loadJsonDataFromCacheOrLocal<FeedData>('feeds.json', DATA_DIR)
+  const categories = loadJsonDataFromCacheOrLocal<{ id: string; name: string }>('categories.json', DATA_DIR)
+  const countries = loadJsonDataFromCacheOrLocal<{ code: string; name: string; flag?: string; lang?: string }>('countries.json', DATA_DIR)
+  const languages = loadJsonDataFromCacheOrLocal<{ code: string; name: string }>('languages.json', DATA_DIR)
+  const logos = loadJsonDataFromCacheOrLocal<LogoData>('logos.json', DATA_DIR)
 
   console.log(`  Channels: ${channels.length}`)
   console.log(`  Feeds: ${feeds.length}`)
@@ -50,40 +57,40 @@ async function main() {
   console.log(`  Logos: ${logos.length}`)
   console.log('')
 
-  // 2. Enrich channels with logo URLs
+  // 3. Enrich channels with logo URLs
   console.log('Enriching channel data...')
   const enrichedChannels = channels.map(ch => ({
     ...ch,
     logo_url: getChannelLogo(ch.id, logos)
   }))
 
-  // 3. Fetch stream URLs
+  // 4. Fetch stream URLs
   console.log('Fetching stream URLs...')
   let streams: Awaited<ReturnType<typeof fetchStreamsFromApi>> = []
   let dataSource = ''
 
-  // Primary: fetch from IPTV org API
-  try {
-    streams = await fetchStreamsFromApi()
-    dataSource = 'iptv-org-api'
-    console.log(`  Got ${streams.length} streams from API`)
-  } catch (apiErr) {
-    console.warn(`  API fetch failed: ${apiErr}`)
+  // Primary: parse M3U files from iptv-org/iptv repo (no external API dependency)
+  const streamsDir = IPTV_MASTER_PATH ? `${IPTV_MASTER_PATH}/streams` : '../../iptv-master/streams'
+  if (existsSync(streamsDir)) {
+    console.log('  Parsing M3U files from iptv-org/iptv...')
+    streams = parseAllM3uFiles({ streamsDir, dataDir: DATA_DIR })
+    dataSource = 'local-m3u'
+    console.log(`  Got ${streams.length} streams from ${streamsDir}`)
+  } else {
+    console.warn(`  M3U streams directory not found: ${streamsDir}`)
 
-    // Fallback: parse local M3U files
-    const streamsDir = IPTV_MASTER_PATH ? `${IPTV_MASTER_PATH}/streams` : '../../iptv-master/streams'
-    if (existsSync(streamsDir)) {
-      console.log('  Falling back to local M3U parsing...')
-      streams = parseAllM3uFiles({ streamsDir, dataDir: DATA_DIR })
-      dataSource = 'local-m3u'
-      console.log(`  Got ${streams.length} streams from local M3U files`)
-    } else {
-      console.warn('  No local M3U files found either. Skipping streams.')
+    // Fallback: try IPTV API
+    try {
+      streams = await fetchStreamsFromApi()
+      dataSource = 'iptv-org-api'
+      console.log(`  Got ${streams.length} streams from API`)
+    } catch (apiErr) {
+      console.warn(`  API stream fetch also failed: ${apiErr}`)
       dataSource = 'none'
     }
   }
 
-  // 4. Upload to Supabase
+  // 5. Upload to Supabase
   console.log('')
   console.log('Uploading to Supabase...')
 

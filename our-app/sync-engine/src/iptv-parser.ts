@@ -12,7 +12,7 @@ export interface ParserConfig {
   dataDir: string
 }
 
-const IPTV_API_STREAMS = 'https://iptv-org.github.io/api/streams.json'
+const API_BASE = 'https://iptv-org.github.io/api'
 
 export function loadJsonData<T>(filePath: string): T[] {
   const fullPath = path.resolve(filePath)
@@ -20,9 +20,57 @@ export function loadJsonData<T>(filePath: string): T[] {
   return JSON.parse(raw) as T[]
 }
 
+const CACHE_DIR = '.cache'
+
+function cachePath(filename: string): string {
+  return path.resolve(CACHE_DIR, filename)
+}
+
+export function loadJsonDataFromCacheOrLocal<T>(filename: string, fallbackDir: string): T[] {
+  const cache = cachePath(filename)
+  if (fs.existsSync(cache)) {
+    return JSON.parse(fs.readFileSync(cache, 'utf-8')) as T[]
+  }
+  return loadJsonData<T>(`${fallbackDir}/${filename}`)
+}
+
+export async function downloadApiData(dataDir: string): Promise<void> {
+  if (!fs.existsSync(CACHE_DIR)) {
+    fs.mkdirSync(CACHE_DIR, { recursive: true })
+  }
+
+  const files = [
+    'channels.json',
+    'categories.json',
+    'countries.json',
+    'languages.json',
+    'feeds.json',
+    'logos.json'
+  ]
+
+  let anyFailed = false
+  for (const name of files) {
+    const url = `${API_BASE}/${name}`
+    const dest = cachePath(name)
+    try {
+      const res = await fetch(url)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const text = await res.text()
+      fs.writeFileSync(dest, text, 'utf-8')
+      console.log(`  Downloaded ${name}`)
+    } catch (err) {
+      anyFailed = true
+      console.warn(`  Could not download ${name}: ${err}`)
+    }
+  }
+  if (anyFailed) {
+    console.log('  Using local cached data where API download failed')
+  }
+}
+
 export async function fetchStreamsFromApi(): Promise<StreamRecord[]> {
   console.log('  Fetching from IPTV API...')
-  const res = await fetch(IPTV_API_STREAMS)
+  const res = await fetch(`${API_BASE}/streams.json`)
   if (!res.ok) {
     throw new Error(`IPTV API returned ${res.status}: ${res.statusText}`)
   }
