@@ -1,20 +1,28 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import WebSocket from 'ws'
 import type { ChannelData, FeedData, StreamRecord } from './types'
 
-const supabaseUrl = process.env.SUPABASE_URL || ''
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY || ''
+let _supabase: SupabaseClient | null = null
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY environment variables are required')
+function getClient(): SupabaseClient {
+  if (_supabase) return _supabase
+
+  const supabaseUrl = process.env.SUPABASE_URL
+  const supabaseKey = process.env.SUPABASE_SERVICE_KEY
+
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('SUPABASE_URL and SUPABASE_SERVICE_KEY environment variables are required')
+  }
+
+  _supabase = createClient(supabaseUrl, supabaseKey, {
+    realtime: { transport: WebSocket }
+  })
+
+  return _supabase
 }
 
-// Node.js < 22 lacks native WebSocket — 'ws' provides it for Supabase realtime
-const supabase = createClient(supabaseUrl, supabaseKey, {
-  realtime: { transport: WebSocket }
-})
-
 export async function upsertChannels(channels: ChannelData[]): Promise<number> {
+  const supabase = getClient()
   const batchSize = 500
   let total = 0
   for (let i = 0; i < channels.length; i += batchSize) {
@@ -47,6 +55,7 @@ export async function upsertChannels(channels: ChannelData[]): Promise<number> {
 }
 
 export async function upsertStreams(streams: StreamRecord[]): Promise<number> {
+  const supabase = getClient()
   const batchSize = 500
   let total = 0
   for (let i = 0; i < streams.length; i += batchSize) {
@@ -78,6 +87,7 @@ export async function upsertStreams(streams: StreamRecord[]): Promise<number> {
 }
 
 export async function upsertFeeds(feeds: FeedData[]): Promise<number> {
+  const supabase = getClient()
   const batchSize = 500
   let total = 0
   for (let i = 0; i < feeds.length; i += batchSize) {
@@ -108,6 +118,7 @@ export async function upsertFeeds(feeds: FeedData[]): Promise<number> {
 }
 
 export async function upsertCategories(categories: { id: string; name: string }[]): Promise<number> {
+  const supabase = getClient()
   const { error } = await supabase
     .from('categories')
     .upsert(categories, { onConflict: 'id', ignoreDuplicates: false })
@@ -119,6 +130,7 @@ export async function upsertCategories(categories: { id: string; name: string }[
 }
 
 export async function upsertCountries(countries: { code: string; name: string; flag?: string; languages?: string[] }[]): Promise<number> {
+  const supabase = getClient()
   const { error } = await supabase
     .from('countries')
     .upsert(
@@ -138,6 +150,7 @@ export async function upsertCountries(countries: { code: string; name: string; f
 }
 
 export async function upsertLanguages(languages: { code: string; name: string }[]): Promise<number> {
+  const supabase = getClient()
   const { error } = await supabase
     .from('languages')
     .upsert(languages, { onConflict: 'code', ignoreDuplicates: false })
@@ -149,6 +162,7 @@ export async function upsertLanguages(languages: { code: string; name: string }[
 }
 
 export async function clearStreams(): Promise<void> {
+  const supabase = getClient()
   const { error } = await supabase.from('streams').delete().neq('id', '00000000-0000-0000-0000-000000000000')
   if (error) {
     console.error('Error clearing streams:', error)
@@ -156,6 +170,8 @@ export async function clearStreams(): Promise<void> {
 }
 
 export async function deleteOrphanedChannels(): Promise<number> {
+  const supabase = getClient()
+  // Find channels that have no associated streams
   const { data: orphaned, error: selectError } = await supabase
     .from('channels')
     .select('id')
