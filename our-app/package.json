@@ -1,0 +1,10 @@
+{
+  "name": "tv-app",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Multi-sports TV streaming application with IPTV data pipeline",
+  "scripts": {
+    "sync": "cd sync-engine && npx tsx src/index.ts",
+    "sync:trigger": "cd sync-engine && npx tsx api/trigger.ts"
+  }
+}

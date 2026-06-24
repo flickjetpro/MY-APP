@@ -1,0 +1,18 @@
+{
+  "name": "tv-app-sync-engine",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "sync": "tsx src/index.ts",
+    "sync:test": "tsx src/index.ts --test"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "iptv-playlist-parser": "^0.15.1",
+    "pg": "^8.22.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,44 @@
+import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { supabase, sendJSON, sendError } from '../lib/supabase.js'
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (req.method === 'OPTIONS') {
+    return sendJSON(res, {})
+  }
+
+  if (req.method !== 'GET') {
+    return sendError(res, 'Method not allowed', 405)
+  }
+
+  try {
+    const { id } = req.query
+
+    if (!id) {
+      return sendError(res, 'Channel ID is required', 400)
+    }
+
+    const { data: channel, error: channelError } = await supabase
+      .from('channels')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (channelError || !channel) {
+      return sendError(res, 'Channel not found', 404)
+    }
+
+    // Fetch associated streams
+    const { data: streams } = await supabase
+      .from('streams')
+      .select('id, feed_id, title, url, quality, label, user_agent, referrer, is_active')
+      .eq('channel_id', id)
+      .order('quality', { ascending: false, nullsFirst: false })
+
+    return sendJSON(res, {
+      ...channel,
+      streams: streams || []
+    })
+  } catch (err: any) {
+    return sendError(res, err.message, 500)
+  }
+}
