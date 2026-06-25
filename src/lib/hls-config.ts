@@ -10,13 +10,11 @@ export function createHlsConfig(userAgent?: string | null, referrer?: string | n
     startLevel: 1,
     capLevelToPlayerSize: true,
     debug: false,
-    xhrSetup: (xhr) => {
-      if (userAgent) {
-        xhr.setRequestHeader('User-Agent', userAgent)
-      }
-      if (referrer) {
-        xhr.setRequestHeader('Referer', referrer)
-      }
+    fetchSetup: (context, initParams) => {
+      const headers = new Headers(initParams.headers)
+      if (userAgent) headers.set('User-Agent', userAgent)
+      if (referrer) headers.set('Referer', referrer)
+      return { ...initParams, headers }
     }
   }
 }
