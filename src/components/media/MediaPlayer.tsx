@@ -59,7 +59,7 @@ export default function MediaPlayer({
     }
 
     setError(null)
-    setPlayerState('LOADING')
+    setPlayerState(prev => prev !== 'PLAYING' ? 'LOADING' : prev)
     retryCountRef.current = 0
 
     const isHls = streamUrl.includes('.m3u8') ||
