@@ -9,7 +9,7 @@ function getClient(): SupabaseClient {
   const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Supabase credentials not configured')
+    throw new Error('Supabase credentials not configured. Set SUPABASE_URL and SUPABASE_SERVICE_KEY in Vercel env vars.')
   }
 
   _supabase = createClient(supabaseUrl, supabaseKey)
@@ -17,7 +17,9 @@ function getClient(): SupabaseClient {
   return _supabase
 }
 
-export const supabase = getClient()
+export function getSupabase(): SupabaseClient {
+  return getClient()
+}
 
 export function sendJSON(res: any, data: any, status = 200) {
   res.status(status).json(data)

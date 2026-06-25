@@ -11,7 +11,7 @@ export default function HomePage() {
   const [country, setCountry] = useState('')
   const [page, setPage] = useState(1)
 
-  const { data, loading } = useChannels({
+  const { data, loading, error } = useChannels({
     search: search || undefined,
     category: category || undefined,
     country: country || undefined,
@@ -45,7 +45,14 @@ export default function HomePage() {
         onCategoryChange={handleCategory}
         onCountryChange={handleCountry}
       />
-      <ChannelGrid channels={data?.data || []} loading={loading} />
+      {error ? (
+        <div className="text-center py-16 text-error">
+          <p className="text-lg font-semibold">Failed to load channels</p>
+          <p className="text-sm mt-2 opacity-70">{error}</p>
+        </div>
+      ) : (
+        <ChannelGrid channels={data?.data || []} loading={loading} />
+      )}
       {data?.pagination && (
         <Pagination
           page={data.pagination.page}

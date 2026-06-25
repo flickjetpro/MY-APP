@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { supabase, sendJSON, sendError } from '../../../lib/api/supabase'
+import { getSupabase, sendJSON, sendError } from '../../../lib/api/supabase'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'OPTIONS') {
@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return sendError(res, 'Channel ID is required', 400)
     }
 
-    const { data: channel, error: channelError } = await supabase
+    const { data: channel, error: channelError } = await getSupabase()
       .from('channels')
       .select('*')
       .eq('id', id)
@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return sendError(res, 'Channel not found', 404)
     }
 
-    const { data: streams } = await supabase
+    const { data: streams } = await getSupabase()
       .from('streams')
       .select('id, feed_id, title, url, quality, label, user_agent, referrer, is_active')
       .eq('channel_id', id)

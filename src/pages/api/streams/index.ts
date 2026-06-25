@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { supabase, sendJSON, sendError, getPagination } from '../../../lib/api/supabase'
+import { getSupabase, sendJSON, sendError, getPagination } from '../../../lib/api/supabase'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'OPTIONS') {
@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { page, limit, offset } = getPagination(req.query)
     const { channel_id, country, category, is_active, quality } = req.query
 
-    let query = supabase
+    let query = getSupabase()
       .from('streams')
       .select('*, channels!inner(name, country_code, categories, logo_url)', { count: 'exact' })
 

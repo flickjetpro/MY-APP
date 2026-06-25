@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { supabase, sendJSON, sendError } from '../../../lib/api/supabase'
+import { getSupabase, sendJSON, sendError } from '../../../lib/api/supabase'
 import { generateShortCode } from '../../../lib/api/short-code'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return sendError(res, 'channel_id is required', 400)
     }
 
-    const { data: channel } = await supabase
+    const { data: channel } = await getSupabase()
       .from('channels')
       .select('id')
       .eq('id', channel_id)
@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     let shortCode = generateShortCode()
     let attempts = 0
     while (attempts < 5) {
-      const { data: existing } = await supabase
+      const { data: existing } = await getSupabase()
         .from('embeds')
         .select('short_code')
         .eq('short_code', shortCode)
@@ -46,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       ? new Date(Date.now() + expires_in_days * 86400000).toISOString()
       : null
 
-    const { error } = await supabase
+    const { error } = await getSupabase()
       .from('embeds')
       .insert({
         short_code: shortCode,

@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { supabase, sendJSON, sendError } from '../../../lib/api/supabase'
+import { getSupabase, sendJSON, sendError } from '../../../lib/api/supabase'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'OPTIONS') {
@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return sendError(res, 'Invalid embed code', 400)
     }
 
-    const { data: embed, error: embedError } = await supabase
+    const { data: embed, error: embedError } = await getSupabase()
       .from('embeds')
       .select('*')
       .eq('short_code', String(code))
@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return sendError(res, 'Embed has expired', 410)
     }
 
-    const { data: channel } = await supabase
+    const { data: channel } = await getSupabase()
       .from('channels')
       .select('id, name, country_code, categories, logo_url')
       .eq('id', embed.channel_id)
@@ -41,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return sendError(res, 'Channel not found', 404)
     }
 
-    let streamQuery = supabase
+    let streamQuery = getSupabase()
       .from('streams')
       .select('id, title, url, quality, user_agent, referrer')
       .eq('channel_id', embed.channel_id)
@@ -57,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const stream = streams?.[0] || null
 
-    await supabase
+    await getSupabase()
       .from('embeds')
       .update({ views: (embed.views || 0) + 1 })
       .eq('short_code', String(code))

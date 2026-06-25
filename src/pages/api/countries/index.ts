@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { supabase, sendJSON, sendError } from '../../../lib/api/supabase'
+import { getSupabase, sendJSON, sendError } from '../../../lib/api/supabase'
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'OPTIONS') {
@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('countries')
       .select('code, name, flag')
       .order('name')
