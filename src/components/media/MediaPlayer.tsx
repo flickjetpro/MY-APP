@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
 import Hls from 'hls.js'
 import { createHlsConfig } from '@/lib/hls-config'
 import AdOverlay from './AdOverlay'
@@ -10,7 +10,6 @@ type PlayerState = 'LOADING' | 'PRE_ROLL' | 'PLAYING' | 'ERROR' | 'BUFFERING'
 interface MediaPlayerProps {
   streamUrl: string
   streamTitle?: string
-  userAgent?: string | null
   referrer?: string | null
   user_agent?: string | null
   poster?: string | null
@@ -21,7 +20,6 @@ interface MediaPlayerProps {
 export default function MediaPlayer({
   streamUrl,
   streamTitle,
-  userAgent,
   referrer,
   user_agent,
   poster,
@@ -39,17 +37,21 @@ export default function MediaPlayer({
   const [qualityLevels, setQualityLevels] = useState<{ height: number; name: string }[]>([])
   const [currentLevel, setCurrentLevel] = useState(-1)
   const [error, setError] = useState<string | null>(null)
-  const [retryCount, setRetryCount] = useState(0)
 
-  const ua = userAgent || user_agent || null
-  const ref = referrer || null
+  // Build proxy URL: fetches M3U8 server-side (bypasses CORS, sets Referer/UA)
+  const proxyUrl = useMemo(() => {
+    const ref = referrer || user_agent ? '' : ''
+    const params = new URLSearchParams({ url: streamUrl })
+    if (referrer) params.set('referrer', referrer)
+    if (user_agent) params.set('ua', user_agent)
+    return `/api/proxy?${params.toString()}`
+  }, [streamUrl, referrer, user_agent])
 
   // Initialize HLS.js stream
   const initStream = useCallback(() => {
     const video = videoRef.current
     if (!video || !streamUrl) return
 
-    // Clean up previous instance
     if (hlsRef.current) {
       hlsRef.current.destroy()
       hlsRef.current = null
@@ -58,15 +60,15 @@ export default function MediaPlayer({
     setError(null)
     setPlayerState('LOADING')
 
-    // Check if it's an HLS stream
     const isHls = streamUrl.includes('.m3u8') ||
                   Hls.isSupported() && !streamUrl.includes('.mpd')
 
     if (isHls && Hls.isSupported()) {
-      const hls = new Hls(createHlsConfig(ua, ref))
+      const hls = new Hls(createHlsConfig())
       hlsRef.current = hls
 
-      hls.loadSource(streamUrl)
+      // Use proxy URL to bypass CORS and set Referer/UA server-side
+      hls.loadSource(proxyUrl)
       hls.attachMedia(video)
 
       hls.on(Hls.Events.MANIFEST_PARSED, (_, data) => {
@@ -90,7 +92,6 @@ export default function MediaPlayer({
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              // Try to recover network error
               hls.startLoad()
               break
             case Hls.ErrorTypes.MEDIA_ERROR:
@@ -104,19 +105,17 @@ export default function MediaPlayer({
         }
       })
     } else if (streamUrl.includes('.mpd')) {
-      // For DASH streams - native fallback
       video.src = streamUrl
       if (playerState !== 'PRE_ROLL') {
         video.play().catch(() => {})
       }
     } else {
-      // Direct stream URL
       video.src = streamUrl
       if (playerState !== 'PRE_ROLL') {
         video.play().catch(() => {})
       }
     }
-  }, [streamUrl, ua, ref, playerState])
+  }, [proxyUrl, streamUrl, playerState])
 
   // Start stream after ad
   const startStream = useCallback(() => {
@@ -219,7 +218,6 @@ export default function MediaPlayer({
   }
 
   const handleRetry = () => {
-    setRetryCount(c => c + 1)
     initStream()
   }
 

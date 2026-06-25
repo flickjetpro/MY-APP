@@ -51,8 +51,8 @@ export default function EmbedPage() {
   return (
     <EmbedPlayer
       streamUrl={data.stream?.url || ''}
-      userAgent={data.stream?.user_agent}
       referrer={data.stream?.referrer}
+      user_agent={data.stream?.user_agent}
       channelName={data.channel?.name}
       adUrl="/ads/sample-ad.mp4"
     />

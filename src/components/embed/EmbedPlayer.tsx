@@ -1,10 +1,9 @@
-import { useRef, useState, useEffect, useCallback } from 'react'
+import { useRef, useState, useEffect, useCallback, useMemo } from 'react'
 import Hls from 'hls.js'
 import { createHlsConfig } from '@/lib/hls-config'
 
 interface EmbedPlayerProps {
   streamUrl: string
-  userAgent?: string | null
   referrer?: string | null
   user_agent?: string | null
   channelName?: string
@@ -13,7 +12,6 @@ interface EmbedPlayerProps {
 
 export default function EmbedPlayer({
   streamUrl,
-  userAgent,
   referrer,
   user_agent,
   channelName,
@@ -31,8 +29,13 @@ export default function EmbedPlayer({
   const [muted, setMuted] = useState(false)
   const [hasError, setHasError] = useState(false)
 
-  const ua = userAgent || user_agent || null
-  const ref = referrer || null
+  // Build proxy URL
+  const proxyUrl = useMemo(() => {
+    const params = new URLSearchParams({ url: streamUrl })
+    if (referrer) params.set('referrer', referrer)
+    if (user_agent) params.set('ua', user_agent)
+    return `/api/proxy?${params.toString()}`
+  }, [streamUrl, referrer, user_agent])
 
   // Initialize stream after ad
   const initStream = useCallback(() => {
@@ -42,9 +45,9 @@ export default function EmbedPlayer({
 
     const isHls = streamUrl.includes('.m3u8') && Hls.isSupported()
     if (isHls) {
-      const hls = new Hls(createHlsConfig(ua, ref))
+      const hls = new Hls(createHlsConfig())
       hlsRef.current = hls
-      hls.loadSource(streamUrl)
+      hls.loadSource(proxyUrl)
       hls.attachMedia(video)
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
         video.play().catch(() => {})
@@ -56,7 +59,7 @@ export default function EmbedPlayer({
       video.src = streamUrl
       video.play().catch(() => setMuted(true))
     }
-  }, [streamUrl, ua, ref])
+  }, [proxyUrl, streamUrl])
 
   // Ad logic
   useEffect(() => {

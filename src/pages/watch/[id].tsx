@@ -31,8 +31,8 @@ export default function WatchPage() {
         <MediaPlayer
           streamUrl={activeStream.url}
           streamTitle={`${channel.name}${activeStream.quality ? ` (${activeStream.quality})` : ''}`}
-          userAgent={activeStream.user_agent}
           referrer={activeStream.referrer}
+          user_agent={activeStream.user_agent}
           poster={channel.logo_url || undefined}
           adUrl="/ads/sample-ad.mp4"
           autoPlay
