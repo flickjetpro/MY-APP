@@ -49,11 +49,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 }
 
 function buildProxyUrl(targetUrl: string, baseUrl: string, referrer: string, ua: string): string {
-  const absolute = new URL(targetUrl, baseUrl).toString()
+  const absolute = resolveUrl(targetUrl, baseUrl)
   const params = new URLSearchParams({ url: absolute })
   if (referrer) params.set('referrer', referrer)
   if (ua) params.set('ua', ua)
   return `/api/proxy?${params.toString()}`
+}
+
+function resolveUrl(relative: string, baseUrl: string): string {
+  const resolved = new URL(relative, baseUrl)
+  const base = new URL(baseUrl)
+  base.searchParams.forEach((v, k) => {
+    if (!resolved.searchParams.has(k)) {
+      resolved.searchParams.set(k, v)
+    }
+  })
+  return resolved.toString()
 }
 
 function rewriteM3u8(content: string, baseUrl: string, referrer: string, ua: string): string {
@@ -63,7 +74,7 @@ function rewriteM3u8(content: string, baseUrl: string, referrer: string, ua: str
 
     if (trimmed.startsWith('#')) {
       const rewritten = line.replace(/URI="([^"]+)"/g, (_m: string, uri: string) => {
-        const absolute = new URL(uri, baseUrl).toString()
+        const absolute = resolveUrl(uri, baseUrl)
         if (uri.includes('.m3u8')) {
           return `URI="${buildProxyUrl(uri, baseUrl, referrer, ua)}"`
         }
@@ -72,7 +83,7 @@ function rewriteM3u8(content: string, baseUrl: string, referrer: string, ua: str
       return rewritten
     }
 
-    const absolute = new URL(trimmed, baseUrl).toString()
+    const absolute = resolveUrl(trimmed, baseUrl)
     if (trimmed.includes('.m3u8')) {
       return buildProxyUrl(trimmed, baseUrl, referrer, ua)
     }

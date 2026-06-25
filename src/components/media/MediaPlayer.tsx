@@ -29,6 +29,7 @@ export default function MediaPlayer({
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const hlsRef = useRef<Hls | null>(null)
+  const retryCountRef = useRef(0)
 
   const [playerState, setPlayerState] = useState<PlayerState>(autoPlay ? 'PRE_ROLL' : 'LOADING')
   const [playing, setPlaying] = useState(false)
@@ -59,6 +60,7 @@ export default function MediaPlayer({
 
     setError(null)
     setPlayerState('LOADING')
+    retryCountRef.current = 0
 
     const isHls = streamUrl.includes('.m3u8') ||
                   Hls.isSupported() && !streamUrl.includes('.mpd')
@@ -92,7 +94,13 @@ export default function MediaPlayer({
         if (data.fatal) {
           switch (data.type) {
             case Hls.ErrorTypes.NETWORK_ERROR:
-              hls.startLoad()
+              retryCountRef.current++
+              if (retryCountRef.current <= 3) {
+                hls.startLoad()
+              } else {
+                setError('Stream not responding — check if it is still online')
+                setPlayerState('ERROR')
+              }
               break
             case Hls.ErrorTypes.MEDIA_ERROR:
               hls.recoverMediaError()
