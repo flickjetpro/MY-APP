@@ -80,16 +80,19 @@ export interface EmbedResponse {
 }
 
 async function fetchAPI<T>(path: string, params?: Record<string, string | number>): Promise<T> {
-  const url = new URL(`${API_BASE}${path}`)
+  let url = `${API_BASE}${path}`
   if (params) {
+    const searchParams = new URLSearchParams()
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
-        url.searchParams.set(key, String(value))
+        searchParams.set(key, String(value))
       }
     })
+    const qs = searchParams.toString()
+    if (qs) url += `?${qs}`
   }
 
-  const res = await fetch(url.toString())
+  const res = await fetch(url)
   if (!res.ok) {
     const error = await res.json().catch(() => ({ error: 'Request failed' }))
     throw new Error(error.error || `HTTP ${res.status}`)
